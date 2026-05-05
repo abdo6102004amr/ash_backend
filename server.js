@@ -11,8 +11,6 @@ const app = express();
 app.use(cors());
 app.use(express.json());
 
-// ❗ مش محتاج uploads بعد Supabase
-// app.use("/uploads", express.static("uploads"));
 
 app.use("/api/products", productRoutes);
 app.use("/api/orders", orderRoutes);

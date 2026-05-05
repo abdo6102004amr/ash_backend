@@ -1,7 +1,7 @@
 import express from "express";
 import db from "../config/db.js";
 import upload from "../middlewares/upload.js";
-
+import supabase from "../config/supabase.js";
 const router = express.Router();
 
 /* ================= CREATE ORDER ================= */
@@ -21,9 +21,31 @@ router.post("/", upload.single("screenshot"), async (req, res) => {
       paymentImage,
     } = req.body;
 
-    const uploadedFile = req.file?.filename;
-    const finalImage = uploadedFile || paymentImage || null;
+    
 
+      let finalImage = paymentImage || null;
+
+      if (req.file) {
+        const file = req.file;
+
+        const fileName = `payments-${Date.now()}-${file.originalname}`;
+
+        const { data, error } = await supabase.storage
+          .from("ASH")
+          .upload(fileName, file.buffer, {
+            contentType: file.mimetype,
+          });
+
+        if (error) {
+          console.log("SUPABASE ERROR:", error);
+        } else {
+          const { data: publicUrlData } = supabase.storage
+            .from("ASH")
+            .getPublicUrl(fileName);
+
+          finalImage = publicUrlData.publicUrl;
+        }
+      }
     const orderSql = `
       INSERT INTO orders 
       (customerName, email, phone, address, totalPrice, paymentScreenshot, status, payment_method, promoCode, discount, promoType)
