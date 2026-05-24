@@ -192,53 +192,79 @@ export const applyPromo = async (req, res) => {
       .toLowerCase();
 
   // ✅ المنتج المطلوب شراءه
-  const buyItem = cartItems.find(
-    (item) =>
-      normalize(item.size) ===
-      normalize(p.bundle_buy)
+  const buyItems = cartItems.filter(
+  (item) =>
+    normalize(item.size) ===
+    normalize(p.bundle_buy)
+);
+
+if (buyItems.length === 0) {
+  return res.status(400).json({
+    message: `Add ${p.bundle_buy}ml items to activate promo`,
+  });
+}
+
+// ✅ إجمالي الكمية المطلوبة
+const totalBuyQuantity = buyItems.reduce(
+  (sum, item) => sum + item.quantity,
+  0
+);
+
+// ✅ المنتجات المجانية
+const getItems = cartItems.filter(
+  (item) =>
+    normalize(item.size) ===
+    normalize(p.bundle_get)
+);
+
+if (getItems.length === 0) {
+  return res.status(400).json({
+    message: `Add ${p.bundle_get}ml free item to cart`,
+  });
+}
+
+const buyQty = p.buy_qty || 1;
+const getQty = p.get_qty || 1;
+
+// ✅ عدد العروض الممكنة
+const eligibleGroups = Math.floor(
+  totalBuyQuantity / buyQty
+);
+
+if (eligibleGroups <= 0) {
+  return res.status(400).json({
+    message:
+      `Buy ${buyQty} Get ${getQty} offer not completed`,
+  });
+}
+
+// ✅ عدد المنتجات المجانية
+const freeItems =
+  eligibleGroups * getQty;
+
+// ✅ ترتيب المنتجات من الأرخص للأغلى
+const sortedGetItems = [...getItems].sort(
+  (a, b) => a.price - b.price
+);
+
+let remainingFreeItems = freeItems;
+
+discount = 0;
+
+// ✅ خصم الأرخص أولًا
+for (const item of sortedGetItems) {
+
+  if (remainingFreeItems <= 0) break;
+
+  const freeQty = Math.min(
+    item.quantity,
+    remainingFreeItems
   );
 
-  if (!buyItem) {
-    return res.status(400).json({
-      message: `Add ${p.bundle_buy}ml items to activate promo`,
-    });
-  }
+  discount += freeQty * item.price;
 
-  // ✅ المنتج المجاني
-  const getItem = cartItems.find(
-    (item) =>
-      normalize(item.size) ===
-      normalize(p.bundle_get)
-  );
-
-  if (!getItem) {
-    return res.status(400).json({
-      message: `Add ${p.bundle_get}ml free item to cart`,
-    });
-  }
-
-  const buyQty = p.buy_qty || 1;
-  const getQty = p.get_qty || 1;
-
-  // ✅ عدد العروض الممكنة
-  const eligibleGroups = Math.floor(
-    buyItem.quantity / buyQty
-  );
-
-  if (eligibleGroups <= 0) {
-    return res.status(400).json({
-      message:
-        `Buy ${buyQty} Get ${getQty} offer not completed`,
-    });
-  }
-
-  // ✅ عدد المنتجات المجانية
-  const freeItems =
-    eligibleGroups * getQty;
-
-  // ✅ الخصم = سعر المنتج المجاني
-  discount =
-    freeItems * getItem.price;
+  remainingFreeItems -= freeQty;
+}
 
   break;
       // =========================
