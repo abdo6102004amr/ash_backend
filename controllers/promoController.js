@@ -174,59 +174,73 @@ export const applyPromo = async (req, res) => {
       // =========================
       // BOGO
       // =========================
-      case "bogo":
+    case "bogo":
 
-        if (
-          !cartItems ||
-          !Array.isArray(cartItems)
-        ) {
-          return res.status(400).json({
-            message: "Cart items required",
-          });
-        }
+  if (
+    !cartItems ||
+    !Array.isArray(cartItems)
+  ) {
+    return res.status(400).json({
+      message: "Cart items required",
+    });
+  }
 
-        const normalize = (s) =>
-          String(s)
-            .replace("ml", "")
-            .trim();
+  const normalize = (s) =>
+    String(s)
+      .replace("ml", "")
+      .trim()
+      .toLowerCase();
 
-        const targetItem = cartItems.find(
-          (item) =>
-            normalize(item.size) ===
-            normalize(p.bundle_buy)
-        );
+  // ✅ المنتج المطلوب شراءه
+  const buyItem = cartItems.find(
+    (item) =>
+      normalize(item.size) ===
+      normalize(p.bundle_buy)
+  );
 
-        if (!targetItem) {
-          return res.status(400).json({
-            message: `Add ${p.bundle_buy}ml items to activate promo`,
-          });
-        }
+  if (!buyItem) {
+    return res.status(400).json({
+      message: `Add ${p.bundle_buy}ml items to activate promo`,
+    });
+  }
 
-        const buyQty = p.buy_qty || 1;
-        const getQty = p.get_qty || 1;
+  // ✅ المنتج المجاني
+  const getItem = cartItems.find(
+    (item) =>
+      normalize(item.size) ===
+      normalize(p.bundle_get)
+  );
 
-        const fullGroup =
-          buyQty + getQty;
+  if (!getItem) {
+    return res.status(400).json({
+      message: `Add ${p.bundle_get}ml free item to cart`,
+    });
+  }
 
-        const eligibleGroups = Math.floor(
-          targetItem.quantity / fullGroup
-        );
+  const buyQty = p.buy_qty || 1;
+  const getQty = p.get_qty || 1;
 
-        if (eligibleGroups <= 0) {
-          return res.status(400).json({
-            message:
-              `Buy ${buyQty} Get ${getQty} offer not completed`,
-          });
-        }
+  // ✅ عدد العروض الممكنة
+  const eligibleGroups = Math.floor(
+    buyItem.quantity / buyQty
+  );
 
-        const freeItems =
-          eligibleGroups * getQty;
+  if (eligibleGroups <= 0) {
+    return res.status(400).json({
+      message:
+        `Buy ${buyQty} Get ${getQty} offer not completed`,
+    });
+  }
 
-        discount =
-          freeItems * targetItem.price;
+  // ✅ عدد المنتجات المجانية
+  const freeItems =
+    eligibleGroups * getQty;
 
-        break;
+  // ✅ الخصم = سعر المنتج المجاني
+  discount =
+    freeItems * getItem.price;
 
+  break;
       // =========================
       // BUNDLE
       // =========================
